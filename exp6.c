@@ -8,68 +8,58 @@
 #define PORT 5000
 #define BUF 1024
 
+static const char *words[][2] = {
+    {"btw", "by the way"}, {"idk", "I do not know"},
+    {"atm", "at the moment"}, {"irl", "in real life"},
+    {"lol", "laughing out loud"}, {"omg", "oh my god"},
+    {"tbh", "to be honest"}, {"asap", "as soon as possible"},
+    {"ty", "thank you"}, {"thx", "thanks"}
+};
+
 int main(void)
 {
-    const char *short_forms[] = {"btw", "idk", "atm", "irl", "lol", "omg",
-                                 "tbh", "asap", "ty", "thx"};
-    const char *meanings[] = {"by the way", "I do not know", "at the moment",
-                              "in real life", "laughing out loud", "oh my god",
-                              "to be honest", "as soon as possible",
-                              "thank you", "thanks"};
-    int server = socket(AF_INET, SOCK_DGRAM, 0);
+    int s = socket(AF_INET, SOCK_DGRAM, 0);
     struct sockaddr_in address = {0};
     char message[BUF], result[BUF * 8];
 
-    if (server < 0) {
-        perror("socket");
-        return 1;
-    }
+    if (s < 0) { perror("socket"); return 1; }
     address.sin_family = AF_INET;
     address.sin_addr.s_addr = INADDR_ANY;
     address.sin_port = htons(PORT);
-    if (bind(server, (struct sockaddr *)&address, sizeof(address)) < 0) {
-        perror("bind");
-        close(server);
-        return 1;
+    if (bind(s, (struct sockaddr *)&address, sizeof(address)) < 0) {
+        perror("bind"); close(s); return 1;
     }
-
     puts("UDP translation server running...");
+
     for (;;) {
         struct sockaddr_in client;
-        socklen_t length = sizeof(client);
-        ssize_t n = recvfrom(server, message, sizeof(message) - 1, 0,
-                             (struct sockaddr *)&client, &length);
-        char *word;
+        socklen_t len = sizeof(client);
+        ssize_t n = recvfrom(s, message, sizeof(message) - 1, 0,
+                             (struct sockaddr *)&client, &len);
         size_t used = 0;
 
-        if (n < 0) {
-            perror("recvfrom");
-            close(server);
-            return 1;
-        }
+        if (n < 0) { perror("recvfrom"); close(s); return 1; }
         message[n] = '\0';
         result[0] = '\0';
-        for (word = strtok(message, " \t\r\n"); word; word = strtok(NULL, " \t\r\n")) {
-            size_t i;
-            size_t end = strlen(word);
-            char punctuation[BUF];
-            const char *translated = word;
-            while (end && strchr(".,!?", word[end - 1]))
-                end--;
-            strcpy(punctuation, word + end);
+        for (char *word = strtok(message, " \t\r\n"); word;
+             word = strtok(NULL, " \t\r\n")) {
+            char tail[BUF];
+            size_t end = strlen(word), i;
+            const char *translation = word;
+            while (end && strchr(".,!?", word[end - 1])) end--;
+            strcpy(tail, word + end);
             word[end] = '\0';
-            for (i = 0; i < sizeof(short_forms) / sizeof(short_forms[0]); i++)
-                if (strcasecmp(word, short_forms[i]) == 0) {
-                    translated = meanings[i];
+            for (i = 0; i < sizeof(words) / sizeof(words[0]); i++)
+                if (!strcasecmp(word, words[i][0])) {
+                    translation = words[i][1];
                     break;
                 }
             used += (size_t)snprintf(result + used, sizeof(result) - used,
-                                     "%s%s%s", used ? " " : "", translated,
-                                     punctuation);
-            word[end] = '\0';
+                                     "%s%s%s", used ? " " : "",
+                                     translation, tail);
         }
-        if (sendto(server, result, strlen(result), 0,
-                   (struct sockaddr *)&client, length) < 0)
+        if (sendto(s, result, strlen(result), 0,
+                   (struct sockaddr *)&client, len) < 0)
             perror("sendto");
     }
 }
