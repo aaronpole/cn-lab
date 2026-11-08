@@ -1,76 +1,26 @@
 
-import socket
-import json
+import socket, json
 
-HOST = "0.0.0.0"
-PORT = 12345
+s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+s.bind(("0.0.0.0", 12345))
+s.listen(1)
 
-# Create TCP server socket
-server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+print("Waiting for client...")
+c, _ = s.accept()
 
-# Bind socket to IP and port
-server.bind((HOST, PORT))
+with c:
+    f = c.makefile("rwb")
+    d = json.loads(f.readline().decode())
+    N, m = d["N"], d["mat"]
 
-# Listen for client
-server.listen(3)
+    up = all(m[i][j] == 0 for i in range(N) for j in range(N) if i > j)
+    low = all(m[i][j] == 0 for i in range(N) for j in range(N) if i < j)
+    diag = all(m[i][j] == 0 for i in range(N) for j in range(N) if i != j)
 
-print("Server waiting for client...")
+    res = "Diagonal" if diag else "Upper Triangular" if up else "Lower Triangular" if low else "Not Special"
 
-# Accept client connection
-conn, addr = server.accept()
+    f.write((res + "\n").encode())
+    f.flush()
+    print("Response Sent")
 
-print("Connected to:", addr)
-
-# Receive matrix data
-file = conn.makefile("rwb")
-data = file.readline()
-
-request = json.loads(data.decode())
-
-N = request["N"]
-matrix = request["matrix"]
-
-# Identify matrix type
-upper = True
-lower = True
-diagonal = True
-
-for i in range(N):
-    for j in range(N):
-
-        if i > j and matrix[i][j] != 0:
-            upper = False
-
-        if i < j and matrix[i][j] != 0:
-            lower = False
-
-        if i != j and matrix[i][j] != 0:
-            diagonal = False
-
-# Determine result
-if diagonal:
-    result = "Diagonal Matrix"
-
-elif upper:
-    result = "Upper Triangular Matrix"
-
-elif lower:
-    result = "Lower Triangular Matrix"
-
-else:
-    result = "Not a special matrix"
-
-print("Matrix received:")
-for row in matrix:
-    print(row)
-
-print("Matrix Type:", result)
-
-# Send result to client
-file.write((result + "\n").encode())
-file.flush()
-
-# Close connection
-file.close()
-conn.close()
-server.close()
+s.close()
