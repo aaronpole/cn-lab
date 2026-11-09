@@ -1,46 +1,20 @@
-import socket
-import threading
-import os
+import socket, threading, os
 
-server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+s.bind(("127.0.0.1", 5000))
 
-host = "127.0.0.1"
-port = 5000
-
-server.bind((host, port))
-server.listen()
-
-print("File Server Started...")
-print("Waiting for clients...")
-
-
-def handle_client(client):
-    filename = client.recv(1024).decode()
-
-    print("Requested file:", filename)
-
-    if os.path.exists(filename):
-        with open(filename, "r") as file:
-            content = file.read()
-
-        pid = os.getpid()
-
-        response = f"Server PID: {pid}\n\n{content}"
+def handle(name, addr):
+    if os.path.isfile(name):
+        with open(name, "r") as f:
+            msg = f"PID: {os.getpid()}\n" + f.read()
     else:
-        response = "Error: File does not exist."
+        msg = "File not found"
 
-    client.send(response.encode())
-    client.close()
+    s.sendto(msg.encode(), addr)
 
+print("UDP File Server Started")
 
 while True:
-    client, address = server.accept()
-
-    print("Client connected:", address)
-
-    thread = threading.Thread(
-        target=handle_client,
-        args=(client,)
-    )
-
-    thread.start()
+    data, addr = s.recvfrom(1024)
+    name = data.decode()
+    threading.Thread(target=handle, args=(name, addr)).start()

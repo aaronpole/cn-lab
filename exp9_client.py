@@ -1,16 +1,7 @@
 import socket
-
-client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-
-client.connect(("127.0.0.1", 5000))
-
-filename = input("Enter filename: ")
-
-client.send(filename.encode())
-
-data = client.recv(4096).decode()
-
-print("\nServer Response:")
-print(data)
-
-client.close()
+s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+name = input("Enter filename: ")
+s.sendto(name.encode(), ("127.0.0.1", 5000))
+data, addr = s.recvfrom(4096)
+print(data.decode())
+s.close()
