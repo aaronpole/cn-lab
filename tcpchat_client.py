@@ -1,9 +1,6 @@
-import socket
-import threading
-
+import socket,threading
 s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 s.connect(("127.0.0.1", 5000))
-
 name = input("Enter name: ")
 
 def receive():
@@ -17,11 +14,9 @@ def receive():
             break
 
 threading.Thread(target=receive, daemon=True).start()
-
 while True:
     msg = input()
     if msg.lower() == "exit":
         break
     s.sendall((name + ": " + msg).encode())
-
 s.close()

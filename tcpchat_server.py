@@ -1,12 +1,8 @@
-import socket
-import threading
-
+import socket, threading 
 clients = []
-
 s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 s.bind(("127.0.0.1", 5000))
 s.listen()
-
 print("Chat Server Started")
 
 def broadcast(msg, sender):
@@ -24,10 +20,8 @@ def handle(c):
             broadcast(msg, c)
         except:
             break
-
     clients.remove(c)
     c.close()
-
 while True:
     c, addr = s.accept()
     print("Connected:", addr)
